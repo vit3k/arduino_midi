@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "midi.h"
 #include <EEPROM.h>
+#include <Bounce2.h>
 
 #define MAX_MIDI_DEVICES 2
 
@@ -12,13 +13,33 @@ struct Patch patches[40];
 
 USB usb;
 Midi::Midi midi1(&usb);
+Bounce switch1 = Bounce();
+Bounce switch2 = Bounce();
+Bounce switch3 = Bounce();
 
 unsigned long lastSwitch = 0;
+
+void printPatch(uint8_t patchNumber) {
+    Serial.print("Patch: ");
+    Serial.print(patchNumber);
+    Serial.print(" - ");
+    Serial.println(patches[patchNumber].programs[0]);
+}
+uint8_t currentPatch = 255;
+void switchPatch(uint8_t patch, bool force = false) {
+    if (patch != currentPatch || force) {
+        Midi::ProgramChangeMessage pc1(patches[patch].programs[0]);
+        midi1.send(pc1);
+        currentPatch = patch;
+        printPatch(currentPatch);
+    }
+}
+bool editMode = false;
+
 void setup() {
     Serial.begin(115200);
-
     delay(200);
-    for(int i = 0; i < 40; i++) {
+    for(int i = 0; i < 5; i++) {
         Patch patch;
         EEPROM.get(i * sizeof(Patch), patch);
         patches[i] = patch;
@@ -34,48 +55,100 @@ void setup() {
     }
     delay( 200 );
 
+    pinMode(2, INPUT);
+    digitalWrite(2, HIGH);
+    switch1.attach(2);
+    switch1.interval(5);
+
+    pinMode(3, INPUT);
+    digitalWrite(3, HIGH);
+    switch2.attach(3);
+    switch2.interval(5);
+
+    pinMode(4, INPUT);
+    digitalWrite(4, HIGH);
+    switch3.attach(4);
+    switch3.interval(5);
+
     lastSwitch = millis();
 }
 
-uint8_t channel = 0;
-int stage = 0;
+bool initialized = false;
+uint8_t initCount = 0;
 
 void loop() {
-
     //midi1.Poll();
+    switch1.update();
+    switch2.update();
+    switch3.update();
+
     usb.Task();
     if ( usb.getUsbTaskState() == USB_STATE_RUNNING )
     {
         unsigned long current = millis();
-        if ( (current - lastSwitch) >= 2000) {
-            Midi::ProgramChangeMessage pc1(patches[channel].programs[0]);
-            midi1.send(pc1);
-            //midi2.Send(pc);
-            channel++;
-            if (channel >= 5)
-            {
-                channel = 0;
+        if (initCount < 3 ) {
+            if ((current - lastSwitch) > 1000) {
+                switchPatch(0, true);
+                initialized = true;
+                lastSwitch = current;
+                initCount++;
             }
-            lastSwitch = current;
+        }
+
+        else {
+            if (switch2.read() == HIGH && switch3.read() == HIGH && (current - lastSwitch) > 1000) {
+                editMode = !editMode;
+                lastSwitch = current;
+                Serial.print("Edit mode: ");
+                Serial.println(editMode);
+            }
+            else if (editMode && (
+                    (switch1.read() == HIGH && switch2.read() == LOW && switch3.read() == LOW)
+                    || (switch1.read() == LOW && switch2.read() == HIGH && switch3.read() == LOW)
+                    || (switch1.read() == LOW && switch2.read() == LOW && switch3.read() == HIGH)
+                    )) {
+                if (switch3.rose()) {
+                    currentPatch++;
+                    if (currentPatch > 2) {
+                        currentPatch = 0;
+                    }
+                    printPatch(currentPatch);
+                }
+                if (switch2.rose()) {
+                    auto patch = patches[currentPatch].programs[0];
+                    patch++;
+                    if (patch > 4) {
+                        patch = 0;
+                    }
+                    patches[currentPatch].programs[0] = patch;
+                    printPatch(currentPatch);
+                }
+                if (switch1.rose()) {
+                    EEPROM.put(currentPatch * sizeof(Patch), patches[currentPatch]);
+                    printPatch(currentPatch);
+                    Serial.println("Stored");
+                }
+            }
+            else if (!editMode
+                && (
+                    (switch1.read() == HIGH && switch2.read() == LOW && switch3.read() == LOW)
+                    || (switch1.read() == LOW && switch2.read() == HIGH && switch3.read() == LOW)
+                    || (switch1.read() == LOW && switch2.read() == LOW && switch3.read() == HIGH)
+                    )
+                )
+            {
+                if (switch1.rose()) {
+                    switchPatch(0);
+                }
+
+                if (switch2.rose()) {
+                    switchPatch(1);
+                }
+
+                if (switch3.rose()) {
+                    switchPatch(2);
+                }
+            }
         }
     }
-
-    /*Usb.Task();
-    if ( Usb.getUsbTaskState() == USB_STATE_RUNNING )
-    {
-    if (stage == 0) {
-    uint8_t outBuf[64];
-    uint8_t msg1[6] = { 0xF0, 0x7E, 0x00, 0x06, 0x01, 0xF7 };
-    Midi.SendSysEx(msg1, 6);
-    delay(200);
-    uint8_t size = receive(outBuf);
-    print_hex(outBuf, size);
-    stage++;
-}
-else if (stage == 1) {
-//uint8_t outBuf[64];
-//uint8_t size = receive(outBuf);
-//print_hex(outBuf, size);
-}
-}*/
 }
