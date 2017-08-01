@@ -3,22 +3,32 @@
 
 namespace Midi {
 
+    enum MessageType {
+        Generic, ProgramChange, SysEx
+    };
     class Message {
     public:
+        uint8_t size = 0;
         uint8_t* rawData;
         Message(uint8_t* _rawData): rawData(_rawData) {};
         Message() {};
         ~Message() { delete rawData; };
-        static Message Parse(uint8_t* rawData, uint8_t length);
+        static Message parse(uint8_t* rawData, uint8_t length);
+        virtual MessageType getType() { return Generic; };
     };
 
-    class ProgramChange : public Message {
+    class ProgramChangeMessage : public Message {
     public:
         uint8_t program = 0;
-        ProgramChange(uint8_t* rawData);
-        ProgramChange(uint8_t program);
+        ProgramChangeMessage(uint8_t* rawData);
+        ProgramChangeMessage(uint8_t program);
+        virtual MessageType getType() { return ProgramChange; };
     };
 
+    class SysExMessage : public Message {
+    public:
+        SysExMessage(uint8_t* rawData, uint8_t size, bool headersIncluded);
+    };
 
     class Midi {
         USBH_MIDI* midi;
@@ -27,10 +37,9 @@ namespace Midi {
     public:
         Midi(USB* usb): midi(new USBH_MIDI(usb)), usb(usb) {};
         ~Midi() { delete midi; }
-        void Setup();
-        Message Parse(uint8_t* rawData, uint8_t length);
-        void Poll();
-        void Send(Message msg);
-        bool Ready();
+        void setup();
+        Message parse(uint8_t* rawData, uint8_t length);
+        void poll();
+        void send(Message msg);
     };
 }
