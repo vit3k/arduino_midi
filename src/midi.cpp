@@ -94,4 +94,8 @@ namespace Midi {
         }
 
     }
+
+    uint8_t Midi::getAddress() {
+        midi->GetAddress();
+    }
 }

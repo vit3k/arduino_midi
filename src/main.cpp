@@ -12,7 +12,9 @@ struct Patch {
 struct Patch patches[40];
 
 USB usb;
+USBHub hub1(&usb);
 Midi::Midi midi1(&usb);
+Midi::Midi midi2(&usb);
 Bounce switch1 = Bounce();
 Bounce switch2 = Bounce();
 Bounce switch3 = Bounce();
@@ -23,13 +25,25 @@ void printPatch(uint8_t patchNumber) {
     Serial.print("Patch: ");
     Serial.print(patchNumber);
     Serial.print(" - ");
-    Serial.println(patches[patchNumber].programs[0]);
+    Serial.print(patches[patchNumber].programs[0]);
+    Serial.print(", ");
+    Serial.println(patches[patchNumber].programs[1]);
 }
 uint8_t currentPatch = 255;
 void switchPatch(uint8_t patch, bool force = false) {
     if (patch != currentPatch || force) {
-        Midi::ProgramChangeMessage pc1(patches[patch].programs[0]);
-        midi1.send(pc1);
+        Serial.println(midi1.getAddress());
+        if (midi1.getAddress() != 0) {
+            Midi::ProgramChangeMessage pc1(patches[patch].programs[0]);
+            midi1.send(pc1);
+        }
+
+        Serial.println(midi2.getAddress());
+        if (midi2.getAddress() != 0) {
+            Midi::ProgramChangeMessage pc2(patches[patch].programs[1]);
+            midi2.send(pc2);
+        }
+
         currentPatch = patch;
         printPatch(currentPatch);
     }
@@ -40,6 +54,7 @@ void setup() {
     Serial.begin(115200);
     delay(200);
     for(int i = 0; i < 5; i++) {
+        EEPROM.put(i * sizeof(Patch), Patch{i, 4-i});
         Patch patch;
         EEPROM.get(i * sizeof(Patch), patch);
         patches[i] = patch;
@@ -71,6 +86,9 @@ void setup() {
     switch3.interval(5);
 
     lastSwitch = millis();
+
+    Serial.println(midi1.getAddress());
+    Serial.println(midi2.getAddress());
 }
 
 bool initialized = false;

@@ -41,5 +41,6 @@ namespace Midi {
         Message parse(uint8_t* rawData, uint8_t length);
         void poll();
         void send(Message msg);
+        uint8_t getAddress();
     };
 }
