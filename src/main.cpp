@@ -270,7 +270,7 @@ void loop() {
 
         unsigned long current = millis();
         if (current - lastCheckDevices > 5000) {
-            usb.ForEachUsbDevice(&PrintAllDescriptors);
+            //usb.ForEachUsbDevice(&PrintAllDescriptors);
             lastCheckDevices = current;
         }
         if (initCount < 3 ) {
