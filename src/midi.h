@@ -30,17 +30,25 @@ namespace Midi {
         SysExMessage(uint8_t* rawData, uint8_t size, bool headersIncluded);
     };
 
+    class USBH_MIDI_ext : public USBH_MIDI {
+    public:
+        uint8_t port;
+        uint8_t Init(uint8_t parent, uint8_t port, bool lowspeed);
+        USBH_MIDI_ext(USB* usb): USBH_MIDI(usb) {};
+    };
+
     class Midi {
-        USBH_MIDI* midi;
+        USBH_MIDI_ext* midi;
         USB* usb;
         MidiSysEx sysExData;
     public:
-        Midi(USB* usb): midi(new USBH_MIDI(usb)), usb(usb) {};
+        Midi(USB* usb): midi(new USBH_MIDI_ext(usb)), usb(usb) {};
         ~Midi() { delete midi; }
         void setup();
         Message parse(uint8_t* rawData, uint8_t length);
         void poll();
         void send(Message msg);
         uint8_t getAddress();
+        uint8_t getPort() { return midi->port; }
     };
 }

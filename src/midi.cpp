@@ -98,4 +98,13 @@ namespace Midi {
     uint8_t Midi::getAddress() {
         midi->GetAddress();
     }
+
+    uint8_t USBH_MIDI_ext::Init(uint8_t parent, uint8_t port, bool lowspeed)
+    {
+        auto rcode = USBH_MIDI::Init(parent, port, lowspeed);
+        if (rcode == 0) {
+            this->port = port;
+        }
+        return rcode;
+    }
 }
