@@ -3,6 +3,8 @@
 #include <EEPROM.h>
 #include <Bounce2.h>
 
+uint8_t getDeviceName(uint8_t addr, char* name, uint8_t &nameLength);
+
 USB usb;
 USBHub hub1(&usb);
 Midi::Midi midi1(&usb);
@@ -89,6 +91,18 @@ void setup() {
 
 uint8_t initCount = 0;
 
+bool currentState[MAX_MIDI_DEVICES] = {false, false};
+
+void updateState() {
+    if (midi1.getAddress() != 0 && !currentState[0]) {
+        currentState[0] = true;
+        char* name;
+        uint8_t nameLength;
+        getDeviceName(midi1.getAddress(), name, nameLength);
+        Serial.write(name, nameLength);
+    }
+}
+
 void loop() {
     switch1.update();
     switch2.update();
@@ -97,6 +111,7 @@ void loop() {
     usb.Task();
     if ( usb.getUsbTaskState() == USB_STATE_RUNNING )
     {
+        updateState();
         unsigned long current = millis();
         if (initCount < 3 ) {
             if ((current - lastSwitch) > 1000) {
@@ -119,4 +134,69 @@ void loop() {
             }
         }
     }
+}
+
+//  function to get single string description
+uint8_t getstrdescr( uint8_t addr, uint8_t idx, char* string)
+{
+  uint8_t buf[ 256 ];
+  uint8_t rcode;
+  uint8_t length;
+  uint8_t i;
+  uint16_t langid;
+  rcode = usb.getStrDescr( addr, 0, 1, 0, 0, buf );  //get language table length
+  if ( rcode ) {
+    return rcode;
+  }
+  length = buf[0];      //length is the first byte
+  rcode = usb.getStrDescr( addr, 0, length, 0, 0, buf );  //get language table
+  if ( rcode ) {
+    return rcode;
+  }
+  langid = (buf[3] << 8) | buf[2];
+  rcode = usb.getStrDescr( addr, 0, 1, idx, langid, buf );
+  if ( rcode ) {
+    return rcode ;
+  }
+  length = buf[ 0 ];
+  rcode = usb.getStrDescr( addr, 0, length, idx, langid, buf );
+  if ( rcode ) {
+    return rcode;
+  }
+  string = new char[length/2 - 2];
+  for ( i = 2; i < length; i += 2 ) {   //string is UTF-16LE encoded
+    string[i/2 - 2] = (char) buf[i];
+  }
+  string[i/2 - 2] = (char)0;
+  return ( rcode );
+}
+
+uint8_t getDeviceName(uint8_t addr, char* name) {
+    USB_DEVICE_DESCRIPTOR buf;
+    uint8_t rcode;
+    rcode = usb.getDevDescr(addr, 0, DEV_DESCR_LEN, ( uint8_t *)&buf);
+    if ( rcode ) {
+      return rcode;
+    }
+    char* manufacturer;
+    char* product;
+
+    if ( buf.iManufacturer > 0 ) {
+        getstrdescr( addr, buf.iManufacturer, manufacturer );   // get manufacturer string
+    }
+    if ( buf.iProduct > 0 ) {
+        getstrdescr( addr, buf.iProduct, product );   // get manufacturer string
+    }
+    uint8_t i = 0;
+
+    name = new char[manufacturerLength + productLength];
+    for(; i < manufacturerLength; i++) {
+        name[i] = manufacturer[i];
+    }
+
+    for(; i < productLength; i++) {
+        name[i] = product[i];
+    }
+
+    return 0;
 }
