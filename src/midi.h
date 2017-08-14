@@ -41,6 +41,9 @@ namespace Midi {
         USBH_MIDI_ext* midi;
         USB* usb;
         MidiSysEx sysExData;
+        uint8_t getstrdescr(uint8_t idx, char* string);
+        char* name;
+
     public:
         Midi(USB* usb): midi(new USBH_MIDI_ext(usb)), usb(usb) {};
         ~Midi() { delete midi; }
@@ -50,5 +53,7 @@ namespace Midi {
         void send(Message msg);
         uint8_t getAddress();
         uint8_t getPort() { return midi->port; }
+
+        char* getDeviceName();
     };
 }
