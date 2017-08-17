@@ -14,7 +14,7 @@ Bounce switch1 = Bounce();
 Bounce switch2 = Bounce();
 Bounce switch3 = Bounce();
 
-U8G2_SH1106_128X64_NONAME_1_4W_HW_SPI lcd(U8G2_R0, 5, 6);
+U8G2_SH1106_128X64_NONAME_1_4W_HW_SPI lcd(U8G2_R0, 4, 3, 2);
 #define MAX_MIDI_DEVICES 2
 
 struct Patch {
@@ -73,7 +73,7 @@ void setup() {
     }
     delay( 200 );
 
-    pinMode(2, INPUT);
+    /*pinMode(2, INPUT);
     digitalWrite(2, HIGH);
     switch1.attach(2);
     switch1.interval(5);
@@ -88,7 +88,7 @@ void setup() {
     switch3.attach(4);
     switch3.interval(5);
 
-    lastSwitch = millis();
+    lastSwitch = millis();*/
 
     lcd.begin();
 }
@@ -109,9 +109,9 @@ void updateState() {
 }
 
 void loop() {
-    switch1.update();
+    /*switch1.update();
     switch2.update();
-    switch3.update();
+    switch3.update();*/
 
     // usb
     usb.Task();
@@ -129,7 +129,7 @@ void loop() {
         }
         else {
             // reading patch switches
-            if (switch1.rose()) {
+            /*if (switch1.rose()) {
                 switchPatch(0);
             }
 
@@ -139,13 +139,13 @@ void loop() {
 
             if (switch3.rose()) {
                 switchPatch(2);
-            }
+            }*/
         }
     }
     // draw to display
     lcd.firstPage();
     do {
-        lcd.setFont(u8g2_font_ncenB14_tr);
+        lcd.setFont(u8g2_font_mercutio_sc_nbp_tf );
         lcd.drawStr(0,24,"Hello World!");
     } while ( lcd.nextPage() );
 }
